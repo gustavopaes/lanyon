@@ -155,6 +155,7 @@ func getRequest(w http.ResponseWriter, r *http.Request) {
   ext := filepath.Ext(fullpath)
 
   setCacheExpirationDays(w, ext)
+  w.Header().Set("Content-Type", mime.TypeByExtension(ext))
 
   Log.Request(r)
 
@@ -184,9 +185,6 @@ func getRequest(w http.ResponseWriter, r *http.Request) {
       }
     case ".css":
       html = getLessFile(fullpath)
-      w.Header().Set("Content-Type", "text/css")
-    case ".js":
-      w.Header().Set("Content-Type", "text/javascript")
     default:
       showFourOhFour(w, r)
       return
