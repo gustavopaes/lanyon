@@ -1,5 +1,11 @@
 {
-    "PortNum": 9999,
+    "PortNum": 3000,
     "TemplateDir": "templates",
-    "PublicDir": "public"
+    "PublicDir": "public",
+    "ExpireTime": {
+      "Html": 30,
+      "Css": 90,
+      "Javascript": 90,
+      "Image": 365
+    }
 }
