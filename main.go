@@ -21,6 +21,7 @@ import (
   "encoding/json"
   "flag"
   "fmt"
+  "io"
   "io/ioutil"
   "log"
   "net/http"
@@ -36,6 +37,15 @@ import (
 
   "github.com/russross/blackfriday"
 )
+
+type gzipResponseWriter struct {
+  io.Writer
+  http.ResponseWriter
+}
+
+func (w *gzipResponseWriter) Write(b []byte) (int, error) {
+  return w.Writer.Write(b)
+}
 
 type expireDateConfig struct {
   Html       int
@@ -208,8 +218,19 @@ func getRequest(w http.ResponseWriter, r *http.Request) {
 
   w.Header().Set("Last-Modified", modTime.Format(time.RFC1123))
 
-  fmt.Fprint(w, html)
-  return
+  if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
+    fmt.Fprint(w, html)
+    return
+  }
+
+  w.Header().Set("Content-Encoding", "gzip")
+
+  gz := gzip.NewWriter(w)
+  defer gz.Close()
+  
+  gzw := gzipResponseWriter{Writer: gz, ResponseWriter: w}
+
+  gzw.Writer.Write( []byte(html) )
 }
 
 // directory listing checks for existing index file
