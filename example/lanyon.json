@@ -2,10 +2,12 @@
     "PortNum": 3000,
     "TemplateDir": "templates",
     "PublicDir": "public",
+    "Less": ["--compress"],
     "ExpireTime": {
       "Html": 30,
       "Css": 90,
       "Javascript": 90,
-      "Image": 365
+      "Image": 365,
+      "Index": 10
     }
 }
