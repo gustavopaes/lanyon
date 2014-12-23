@@ -134,6 +134,7 @@ func main() {
   startup()
 
   http.HandleFunc("/", getRequest)
+
   colonport := fmt.Sprintf(":%d", config.PortNum)
   log.Fatal(http.ListenAndServe(colonport, nil))
 }
@@ -153,6 +154,7 @@ func getRequest(w http.ResponseWriter, r *http.Request) {
   html := ""
   fullpath := filepath.Clean(config.PublicDir + r.URL.Path)
   ext := filepath.Ext(fullpath)
+  modTime := time.Now()
 
   setCacheExpirationDays(w, ext)
   w.Header().Set("Content-Type", mime.TypeByExtension(ext))
@@ -162,7 +164,7 @@ func getRequest(w http.ResponseWriter, r *http.Request) {
   // check if file exists on filesystem
   if fi, err := os.Stat(fullpath); err == nil {
     if fi.IsDir() {
-      html, err = getDirectoryListing(fullpath)
+      modTime, html, err = getDirectoryListing(fullpath)
       if err != nil {
         showFourOhFour(w, r)
         return
@@ -178,18 +180,22 @@ func getRequest(w http.ResponseWriter, r *http.Request) {
     // file should be generated, or 404
     switch ext {
     case ".html":
-      html, err = getMarkdownFile(fullpath)
+      modTime, html, err = getMarkdownFile(fullpath)
       if err != nil {
         showFourOhFour(w, r)
         return
       }
+
     case ".css":
-      html = getLessFile(fullpath)
+      modTime, html = getLessFile(fullpath)
+
     default:
       showFourOhFour(w, r)
       return
     }
   }
+
+  w.Header().Set("Last-Modified", modTime.Format(time.RFC1123))
 
   fmt.Fprint(w, html)
   return
@@ -200,7 +206,8 @@ func getRequest(w http.ResponseWriter, r *http.Request) {
 // otherwise gets directory listing of html and md files
 // and creates a "category" page using the category.html
 // template file with array of .Pages
-func getDirectoryListing(dir string) (html string, err error) {
+func getDirectoryListing(dir string) (lastModified time.Time, html string, err error) {
+  modTime := time.Now();
 
   // check for index.md
   indexfile := dir + "/index.md"
@@ -224,56 +231,78 @@ func getDirectoryListing(dir string) (html string, err error) {
   }
 
   // read markdown files to get title, date
-  for _, f := range files {
+  for fileIndex, f := range files {
     pg := readParseFile(f)
     filename := strings.Replace(f, ".md", ".html", 1)
     pg.Url = "/" + strings.Replace(filename, config.PublicDir, "", 1)
     page.Pages = append(page.Pages, pg)
+
+    if fileIndex == 0 {
+      modTime = pg.Date
+    }
   }
 
   page.Pages.Sort()
   html = applyTemplates(page)
-  return html, err
+
+  return modTime, html, err
 }
 
 // reads markdown file, parse front matter and render content
 // using template file defined by layout: param or by default
 // uses post.html template
-func getMarkdownFile(fullpath string) (html string, err error) {
+func getMarkdownFile(fullpath string) (lastModified time.Time, html string, err error) {
   mdfile := strings.Replace(fullpath, ".html", ".md", 1)
   page := Page{}
 
-  if _, err := os.Stat(mdfile); err == nil {
+  statinfo, err := os.Stat(mdfile)
+
+  if err == nil {
     page = readParseFile(mdfile)
   } else {
-    return "", fmt.Errorf("Error reading file %s ", mdfile)
+    return time.Now(), "", fmt.Errorf("Error reading file %s ", mdfile)
   }
 
   html = applyTemplates(page)
-  return html, err
+  return statinfo.ModTime(), html, err
 }
 
-func getLessFile(fullpath string) string {
+func getLessFile(fullpath string) (time.Time, string) {
   lessfile := strings.Replace(fullpath, ".css", ".less", 1)
 
   path, err := exec.LookPath("lessc")
+
   if err != nil {
-    return "/* Less is not installed */"
+    return time.Now(), "/* Less is not installed */"
   }
   // requires lessc binary
   cmd := exec.Command(path, "--no-color", "--no-ie-compat", "--silent", "-su=off", "-sm=on", lessfile)
   output, err := cmd.Output()
+
   if err != nil {
-    return ""
+    log.Println("Less error. Trying without parameters. [Try to update your lessc version]")
+
+    // try without parameters
+    cmd = exec.Command(path, lessfile)
+    output, err = cmd.Output()
+
+    if err != nil {
+      return time.Now(), "/* Less error */"
+    }
   }
 
-  return string(output)
+  if statinfo, err := os.Stat(lessfile); err != nil {
+    return time.Now(), "/* Error getting statinfo */"
+  } else {
+    return statinfo.ModTime(), string(output)
+  }
+
 }
 
 func showFourOhFour(w http.ResponseWriter, r *http.Request) {
   md404 := config.PublicDir + "404.md"
 
-  html, err := getMarkdownFile(md404)
+  _, html, err := getMarkdownFile(md404)
   if err != nil {
     http.NotFound(w, r)
     return
