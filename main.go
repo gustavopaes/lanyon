@@ -32,6 +32,7 @@ import (
   "text/template"
   "time"
   "mime"
+  "compress/gzip"
 
   "github.com/russross/blackfriday"
 )
@@ -164,8 +165,6 @@ func getRequest(w http.ResponseWriter, r *http.Request) {
     ext = ".html"
     isIndex = true
   }
-
-  log.Println("ext", ext)
 
   setCacheExpirationDays(w, ext, isIndex)
 
