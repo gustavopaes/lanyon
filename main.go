@@ -41,6 +41,7 @@ type expireDateConfig struct {
   Css        int
   Javascript int
   Image      int
+  Index      int
 }
 
 // globals
@@ -49,6 +50,7 @@ var config struct {
   PublicDir      string
   TemplateDir    string
   RedirectDomain []string
+  Less           []string
   ExpireTime     expireDateConfig
 }
 
@@ -148,15 +150,25 @@ func getRequest(w http.ResponseWriter, r *http.Request) {
   }
 
   // add default headers
-  w.Header().Add("Server", ServerVersion)
+  w.Header().Add("Server", "Lanyon " + ServerVersion)
   w.Header().Add("Vary", "Accept-Encoding")
 
+  isIndex := false
   html := ""
   fullpath := filepath.Clean(config.PublicDir + r.URL.Path)
   ext := filepath.Ext(fullpath)
   modTime := time.Now()
 
-  setCacheExpirationDays(w, ext)
+  if ext == "" {
+    // probaly, a directory list (index)
+    ext = ".html"
+    isIndex = true
+  }
+
+  log.Println("ext", ext)
+
+  setCacheExpirationDays(w, ext, isIndex)
+
   w.Header().Set("Content-Type", mime.TypeByExtension(ext))
 
   Log.Request(r)
@@ -275,8 +287,9 @@ func getLessFile(fullpath string) (time.Time, string) {
   if err != nil {
     return time.Now(), "/* Less is not installed */"
   }
+
   // requires lessc binary
-  cmd := exec.Command(path, "--no-color", "--no-ie-compat", "--silent", "-su=off", "-sm=on", lessfile)
+  cmd := exec.Command(path, strings.Join(config.Less, " "), lessfile)
   output, err := cmd.Output()
 
   if err != nil {
@@ -462,20 +475,24 @@ func getDirName(fullpath string) (dir string) {
   return
 }
 
-func setCacheExpirationDays(w http.ResponseWriter, ext string) {
+func setCacheExpirationDays(w http.ResponseWriter, ext string, isIndex bool) {
   var days int
 
-  switch mime.TypeByExtension(ext) {
-  case "text/html":
-    days = config.ExpireTime.Html
-  case "text/css":
-    days = config.ExpireTime.Css
-  case "application/javascript":
-    days = config.ExpireTime.Javascript
-  case "image/jpeg", "image/gif", "image/webm":
-    days = config.ExpireTime.Image
-  default:
-    days = defaultDays
+  if isIndex == true {
+    days = config.ExpireTime.Index
+  } else {
+    switch mime.TypeByExtension(ext) {
+    case "text/html":
+      days = config.ExpireTime.Html
+    case "text/css":
+      days = config.ExpireTime.Css
+    case "application/javascript":
+      days = config.ExpireTime.Javascript
+    case "image/jpeg", "image/gif", "image/webm":
+      days = config.ExpireTime.Image
+    default:
+      days = defaultDays
+    }
   }
 
   if days == 0 {
