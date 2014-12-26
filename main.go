@@ -233,6 +233,26 @@ func getRequest(w http.ResponseWriter, r *http.Request) {
   gzw.Writer.Write( []byte(html) )
 }
 
+func readDirListAndAppend(dir string) []string {
+  var files []string
+
+  dirlist, _ := ioutil.ReadDir(dir)
+  for _, fi := range dirlist {
+    f := filepath.Join(dir, fi.Name())
+    ext := filepath.Ext(f)
+
+    if ext == ".html" || ext == ".md" {
+      files = append(files, f)
+    } else {
+      // recursively
+      files = append(files, readDirListAndAppend(f)...)
+    }
+  }
+
+  return files
+}
+
+
 // directory listing checks for existing index file
 // and if exists processes like any other markdown file
 // otherwise gets directory listing of html and md files
@@ -253,14 +273,8 @@ func getDirectoryListing(dir string) (lastModified time.Time, html string, err e
   page.Category = filepath.Base(dir)
 
   var files []string
-  dirlist, _ := ioutil.ReadDir(dir)
-  for _, fi := range dirlist {
-    f := filepath.Join(dir, fi.Name())
-    ext := filepath.Ext(f)
-    if ext == ".html" || ext == ".md" {
-      files = append(files, f)
-    }
-  }
+
+  files = readDirListAndAppend(dir)
 
   // read markdown files to get title, date
   for fileIndex, f := range files {
