@@ -60,6 +60,7 @@ var config struct {
   PortNum        int
   PublicDir      string
   TemplateDir    string
+  FormatDate     string
   RedirectDomain []string
   Less           []string
   ExpireTime     expireDateConfig
@@ -416,7 +417,7 @@ func readParseFile(filename string) (page Page) {
         case "layout":
           page.Layout = value
         case "date":
-          page.Date, _ = time.Parse("2006-01-02", value)
+          page.Date, _ = time.Parse(config.FormatDate, value)
         default:
           page.Params[key] = value
         }

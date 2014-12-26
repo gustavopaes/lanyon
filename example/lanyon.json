@@ -2,6 +2,7 @@
     "PortNum": 3000,
     "TemplateDir": "templates",
     "PublicDir": "public",
+    "FormatDate": "2006-01-02 03:04:05",
     "Less": ["--compress"],
     "ExpireTime": {
       "Html": 30,
