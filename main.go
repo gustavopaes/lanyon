@@ -211,6 +211,13 @@ func getRequest(w http.ResponseWriter, r *http.Request) {
         return
       }
     } else {
+      statinfo, err := os.Stat(fullpath)
+
+      if err != nil {
+        modTime = statinfo.ModTime()
+        w.Header().Set("Last-Modified", modTime.Format(time.RFC1123))
+      }
+
       http.ServeFile(w, r, fullpath)
 
       return
