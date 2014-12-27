@@ -34,6 +34,8 @@ import (
   "time"
   "mime"
   "compress/gzip"
+  //"reflect"
+  "math"
 
   "github.com/russross/blackfriday"
 )
@@ -137,7 +139,24 @@ func startup() {
 }
 
 func loadTemplates() (err error) {
-  ts, err = template.ParseGlob(config.TemplateDir + "*.html")
+  funcMap := template.FuncMap{
+    "remainder": func (a, b int) int {
+      return int( math.Remainder(float64(a + 1), float64(b)) )
+    },
+
+    "isPost": func (page Page) bool {
+      return page.Layout == "post"
+    },
+
+    "isCategory": func (page Page) bool {
+      return page.Layout == "category"
+    },
+  }
+
+  ts = template.New("")
+
+  ts, err = ts.Funcs(funcMap).ParseGlob(config.TemplateDir + "*.html")
+
   return err
 }
 
