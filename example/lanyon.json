@@ -4,6 +4,7 @@
     "PublicDir": "public",
     "FormatDate": "2006-01-02 03:04:05",
     "Less": ["--compress"],
+    "Sitemap": ["blog/"],
     "ExpireTime": {
       "Html": 30,
       "Css": 90,

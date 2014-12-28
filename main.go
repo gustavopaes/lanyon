@@ -63,6 +63,7 @@ var config struct {
   PublicDir      string
   TemplateDir    string
   FormatDate     string
+  Sitemap        []string
   RedirectDomain []string
   Less           []string
   ExpireTime     expireDateConfig
@@ -103,6 +104,7 @@ var Log = LanyonLog{}
 type Page struct {
   Title, Content, Category, Layout, Url string
   Date                                  time.Time
+  Updated                               time.Time
   Pages                                 PagesSlice
   Params                                map[string]string
 }
@@ -167,9 +169,35 @@ func main() {
   startup()
 
   http.HandleFunc("/", getRequest)
+  http.HandleFunc("/sitemap.xml", getSiteMap)
 
   colonport := fmt.Sprintf(":%d", config.PortNum)
   log.Fatal(http.ListenAndServe(colonport, nil))
+}
+
+func getSiteMap(w http.ResponseWriter, r *http.Request) {
+  modTime := time.Now()
+  fullpath := filepath.Clean(config.PublicDir)
+  
+  var files []string
+
+  for _, smp := range config.Sitemap {
+    dir := fullpath + "/" + smp
+
+    files = append(files, readDirListAndAppend(dir)...)
+  }
+
+  page := Page{}
+  page.Title = "Sitemap"
+  page.Layout = "sitemap"
+  page.Category = "Sitemap"
+
+  readPagesFiles(files, &page, &modTime)
+
+  page.Pages.Sort()
+  html := applyTemplates(page)
+
+  fmt.Fprint(w, html)
 }
 
 // handler for all requests
@@ -303,22 +331,27 @@ func getDirectoryListing(dir string) (lastModified time.Time, html string, err e
 
   files = readDirListAndAppend(dir)
 
-  // read markdown files to get title, date
-  for fileIndex, f := range files {
-    pg := readParseFile(f)
-    filename := strings.Replace(f, ".md", ".html", 1)
-    pg.Url = "/" + strings.Replace(filename, config.PublicDir, "", 1)
-    page.Pages = append(page.Pages, pg)
-
-    if fileIndex == 0 {
-      modTime = pg.Date
-    }
-  }
+  readPagesFiles(files, &page, &modTime)
 
   page.Pages.Sort()
   html = applyTemplates(page)
 
   return modTime, html, err
+}
+
+func readPagesFiles(files []string, page *Page, modTime *time.Time) {
+  // read markdown files to get title, date
+  for fileIndex, f := range files {
+    pg := readParseFile(f)
+    filename := strings.Replace(f, ".md", ".html", 1)
+    pg.Url = "/" + strings.Replace(filename, config.PublicDir, "", 1)
+    
+    page.Pages = append(page.Pages, pg)
+
+    if fileIndex == 0 {
+      *modTime = pg.Date
+    }
+  }
 }
 
 // reads markdown file, parse front matter and render content
@@ -416,7 +449,12 @@ func readParseFile(filename string) (page Page) {
     Category: getDirName(filename),
     Layout:   "post",
     Date:     time.Now(),
+    Updated:  time.Now(),
     Params:   make(map[string]string),
+  }
+
+  if statinfo, err := os.Stat(filename); err == nil {
+    page.Updated = statinfo.ModTime()
   }
 
   var data, err = ioutil.ReadFile(filename)
