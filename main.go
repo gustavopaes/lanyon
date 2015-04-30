@@ -241,12 +241,15 @@ func getRequest(w http.ResponseWriter, r *http.Request) {
     } else {
       statinfo, err := os.Stat(fullpath)
 
-      if err != nil {
+      if err == nil {
         modTime = statinfo.ModTime()
-        w.Header().Set("Last-Modified", modTime.Format(time.RFC1123))
       }
 
-      http.ServeFile(w, r, fullpath)
+      log.Println("Err: ", err)
+
+      html, err := ioutil.ReadFile(fullpath)
+      
+      responseWriter(w, r, modTime, string(html[:]))
 
       return
     }
@@ -271,6 +274,10 @@ func getRequest(w http.ResponseWriter, r *http.Request) {
     }
   }
 
+  responseWriter(w, r, modTime, html)
+}
+
+func responseWriter(w http.ResponseWriter, r *http.Request, modTime time.Time, html string) {
   w.Header().Set("Last-Modified", modTime.Format(time.RFC1123))
 
   if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") {
