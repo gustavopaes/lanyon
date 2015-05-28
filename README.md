@@ -10,22 +10,32 @@ creating, generating and publishing. Plus, using a static site generator has a
 duplicate source tree and generated tree, with some assets in each. Lanyon
 simplifies this with one set of directories with content and assets.
 
+
+# Why I have forked
+
+I have forked Lanyon from [@mkaz](https://github.com/mkaz/) to make it support some new features, like:
+
+- [ ] file config where I can define redirects
+- [x] `sitemap.xml` for google bot
+- [x] define differing cache time for each content type
+- [x] gzip responses
+- [x] send Last-Modified header for posts and static files
+- [x] resolve [`less` bug](https://github.com/mkaz/lanyon/issues/9)
+
+
 ---
 
 ## Getting Started
 
 #### Install
 
-Binaries are available in the `binaries` folder for Mac OS X and Linux (amd64).
-You can also build a binary from the available Go source code. 
-
 The only dependency for building is the `github.com/russross/blackfriday`
 library for markdown parsing. So to build yourself, assuming you have [Golang
 installed](http://golang.org/doc/install):
 
 ```bash
-$ git clone https://github.com/mkaz/lanyon
-$ cd lanyon/src
+$ git clone https://github.com/gustavopaes/lanyon
+$ cd lanyon
 $ go get github.com/russross/blackfriday
 $ go build -o lanyon 
 ```
@@ -64,11 +74,22 @@ set:
 
 ```json
 {
-    "PortNum": 9999,
+    "PortNum": 3000,
     "TemplateDir": "templates",
     "PublicDir": "public",
-    "RedirectDomain": ["www.mkaz.com", "www.mkaz.com"]
+    "RedirectDomain": ["www.gustavopaes.net", "gustavopaes.net"],
+    "FormatDate": "2006-01-02 03:04:05",
+    "Less": ["--compress"],
+    "Sitemap": ["blog/"],
+    "ExpireTime": {
+      "Html": 30,
+      "Css": 90,
+      "Javascript": 90,
+      "Image": 365,
+      "Index": 10
+    }
 }
+
 ```
 
 **PortNum** - [required] the port number for the web server to listen to, if you
@@ -91,14 +112,16 @@ go to the proper domain. In my production config, I use this parameter to redire
 all requests through the CDN, unless it is an origin request, so it looks like
 ["origin.mkaz.com", "www.mkaz.com"]
 
+**Less** - [optional] Required if you use `.less` extention file for CSS. Parameters
+to send to less process.
+
+**Sitemap**: [required] PublicDir relative path to create sitemap XML.
+
+**ExpireTime**: [required] Define cache time for each content type.
 
 ---
 
 ## Templates & Customizing
-
-By far the easiest way to customize is to modify the style.css file to fit your
-needs. The example templates produce a common blog markup, based off the open
-source [WordPress Underscores theme](https://github.com/automattic/_s). 
 
 For deeper customization, Lanyon uses Go Templates which is a relatively simply
 templating language providing basic variable substitution and minimal logic. You

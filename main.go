@@ -34,7 +34,6 @@ import (
   "time"
   "mime"
   "compress/gzip"
-  //"reflect"
   "math"
 
   "github.com/russross/blackfriday"
@@ -57,7 +56,7 @@ type expireDateConfig struct {
   Index      int
 }
 
-// globals
+// lanyon.json template
 var config struct {
   PortNum        int
   PublicDir      string
@@ -175,6 +174,7 @@ func main() {
   log.Fatal(http.ListenAndServe(colonport, nil))
 }
 
+// Make a sitemap XML with all markdown files defined in lanyon.json file
 func getSiteMap(w http.ResponseWriter, r *http.Request) {
   modTime := time.Now()
   fullpath := filepath.Clean(config.PublicDir)
@@ -244,8 +244,6 @@ func getRequest(w http.ResponseWriter, r *http.Request) {
       if err == nil {
         modTime = statinfo.ModTime()
       }
-
-      log.Println("Err: ", err)
 
       html, err := ioutil.ReadFile(fullpath)
       
