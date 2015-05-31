@@ -15,7 +15,7 @@ simplifies this with one set of directories with content and assets.
 
 I have forked Lanyon from [@mkaz](https://github.com/mkaz/) to make it support some new features, like:
 
-- [ ] file config where I can define redirects
+- [x] file config where I can define redirects
 - [x] `sitemap.xml` for google bot
 - [x] define differing cache time for each content type
 - [x] gzip responses
