@@ -70,6 +70,8 @@ var config struct {
 
 var configFile string
 
+var redirectKeys = make(map[string]string)
+
 var defaultDays = 30
 
 var ServerVersion = "0.3.0"
@@ -110,6 +112,8 @@ type Page struct {
 
 func startup() {
   loadConfig()
+
+  loadRedirects()
 
   log.Printf("Lanyon listening on http://localhost:%d", config.PortNum)
 
@@ -205,6 +209,11 @@ func getRequest(w http.ResponseWriter, r *http.Request) {
 
   // check domain redirect returns true on redirect
   if domainRedirect(w, r) {
+    return
+  }
+
+  // check if exist redirect
+  if pathRedirect(w, r) {
     return
   }
 
@@ -444,6 +453,17 @@ func domainRedirect(w http.ResponseWriter, r *http.Request) bool {
   return true
 }
 
+func pathRedirect(w http.ResponseWriter, r *http.Request) bool {
+  
+  if dest := redirectKeys[r.URL.RequestURI()]; dest != "" {
+    Log.Request(r)
+    http.Redirect(w, r, dest, 301)
+    return true
+  }
+
+  return false
+}
+
 // read and parse markdown filename
 func readParseFile(filename string) (page Page) {
 
@@ -566,6 +586,21 @@ func loadConfig() {
 
   if err := json.Unmarshal(file, &config); err != nil {
     log.Fatalln("Error parsing config lanyon.json: ", err)
+  }
+}
+
+func loadRedirects() {
+  // check if redirect config file exist
+  if redirectsData, err := ioutil.ReadFile("./redirects.conf"); err == nil {
+    redirects := strings.Split(string(redirectsData), "\n")
+
+    for _, rule := range redirects {
+      splits := strings.Split(rule, "\t")
+      orig := splits[0]
+      dest := splits[1]
+
+      redirectKeys[ orig ] = dest
+    }
   }
 }
 
